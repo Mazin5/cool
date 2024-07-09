@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
+import '../models/hall.dart';
 
 class AddServiceScreen extends StatefulWidget {
   @override
@@ -8,37 +9,23 @@ class AddServiceScreen extends StatefulWidget {
 
 class _AddServiceScreenState extends State<AddServiceScreen> {
   final _formKey = GlobalKey<FormState>();
-  String? _name;
-  String? _description;
-  String? _location;
-  int? _capacity;
-  double? _price;
-  String? _imageUrl;
+  late String title;
+  late String description;
+  late String image;
+  late double rating;
 
-  final DatabaseReference servicesRef =
-      FirebaseDatabase.instance.ref().child('services');
-
-  void _submitForm() {
+  _addHall() {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
-      // Save the data to the database
-      servicesRef.push().set({
-        'name': _name,
-        'description': _description,
-        'location': _location,
-        'capacity': _capacity,
-        'price': _price,
-        'imageUrl': _imageUrl,
-      }).then((_) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Service added successfully')),
-        );
-        // Clear the form
-        _formKey.currentState!.reset();
-      }).catchError((error) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to add service: $error')),
-        );
+      DatabaseReference hallRef = FirebaseDatabase.instance.reference().child('Hall').push();
+      Hall newHall = Hall(
+        title: title,
+        description: description,
+        image: image,
+        rating: rating,
+      );
+      hallRef.set(newHall.toJson()).then((_) {
+        Navigator.pop(context);
       });
     }
   }
@@ -47,95 +34,35 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Add New Service'),
+        title: Text('Add Service'),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: ListView(
+      body: Form(
+        key: _formKey,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
             children: [
               TextFormField(
-                decoration: const InputDecoration(labelText: 'Name'),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter a name';
-                  }
-                  return null;
-                },
-                onSaved: (value) {
-                  _name = value;
-                },
+                decoration: InputDecoration(labelText: 'Title'),
+                onSaved: (value) => title = value!,
               ),
               TextFormField(
-                decoration:
-                    const InputDecoration(labelText: 'Brief Description'),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter a description';
-                  }
-                  return null;
-                },
-                onSaved: (value) {
-                  _description = value;
-                },
+                decoration: InputDecoration(labelText: 'Description'),
+                onSaved: (value) => description = value!,
               ),
               TextFormField(
-                decoration: const InputDecoration(labelText: 'Location'),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter a location';
-                  }
-                  return null;
-                },
-                onSaved: (value) {
-                  _location = value;
-                },
+                decoration: InputDecoration(labelText: 'Image URL'),
+                onSaved: (value) => image = value!,
               ),
               TextFormField(
-                decoration: const InputDecoration(labelText: 'Capacity'),
-                validator: (value) {
-                  if (value == null ||
-                      value.isEmpty ||
-                      int.tryParse(value) == null) {
-                    return 'Please enter a valid capacity';
-                  }
-                  return null;
-                },
-                onSaved: (value) {
-                  _capacity = int.tryParse(value!);
-                },
+                decoration: InputDecoration(labelText: 'Rating'),
+                keyboardType: TextInputType.number,
+                onSaved: (value) => rating = double.parse(value!),
               ),
-              TextFormField(
-                decoration: const InputDecoration(labelText: 'Price'),
-                validator: (value) {
-                  if (value == null ||
-                      value.isEmpty ||
-                      double.tryParse(value) == null) {
-                    return 'Please enter a valid price';
-                  }
-                  return null;
-                },
-                onSaved: (value) {
-                  _price = double.tryParse(value!);
-                },
-              ),
-              TextFormField(
-                decoration: const InputDecoration(labelText: 'Image URL'),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter an image URL';
-                  }
-                  return null;
-                },
-                onSaved: (value) {
-                  _imageUrl = value;
-                },
-              ),
-              const SizedBox(height: 20),
+              SizedBox(height: 20),
               ElevatedButton(
-                onPressed: _submitForm,
-                child: const Text('Submit'),
+                onPressed: _addHall,
+                child: Text('Add'),
               ),
             ],
           ),

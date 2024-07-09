@@ -1,131 +1,91 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
-import '../models/hall.dart'; // Import the existing Hall model
+import '../models/hall.dart';
 
 class UpdateServiceScreen extends StatefulWidget {
   final Hall hall;
 
-  const UpdateServiceScreen({super.key, required this.hall});
+  UpdateServiceScreen({required this.hall});
 
   @override
   _UpdateServiceScreenState createState() => _UpdateServiceScreenState();
 }
 
 class _UpdateServiceScreenState extends State<UpdateServiceScreen> {
-  late TextEditingController _nameController;
-  late TextEditingController _descriptionController;
-  late TextEditingController _locationController;
-  late TextEditingController _phoneController;
-  late TextEditingController _capacityController;
-  late TextEditingController _priceController;
-
-  final DatabaseReference servicesRef =
-      FirebaseDatabase.instance.ref().child('services');
+  final _formKey = GlobalKey<FormState>();
+  late String title;
+  late String description;
+  late String image;
+  late double rating;
 
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.hall.name);
-    _descriptionController =
-        TextEditingController(text: widget.hall.description);
-    _locationController = TextEditingController(text: widget.hall.location);
-    _phoneController = TextEditingController(text: widget.hall.phoneNumber);
-    _capacityController = TextEditingController(text: widget.hall.capacity);
-    _priceController = TextEditingController(text: widget.hall.price);
+    title = widget.hall.title;
+    description = widget.hall.description;
+    image = widget.hall.image;
+    rating = widget.hall.rating;
+  }
+
+  _updateHall() {
+    if (_formKey.currentState!.validate()) {
+      _formKey.currentState!.save();
+      DatabaseReference hallRef = FirebaseDatabase.instance.reference().child('Hall').child(widget.hall.id!);
+      Hall updatedHall = Hall(
+        id: widget.hall.id,
+        title: title,
+        description: description,
+        image: image,
+        rating: rating,
+      );
+      hallRef.set(updatedHall.toJson()).then((_) {
+        Navigator.pop(context);
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Update My Service'),
+        title: Text('Update Service'),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: ListView(
-          children: [
-            TextField(
-              controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: 'Hall Name',
-                border: OutlineInputBorder(),
+      body: Form(
+        key: _formKey,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              TextFormField(
+                initialValue: title,
+                decoration: InputDecoration(labelText: 'Title'),
+                onSaved: (value) => title = value!,
               ),
-            ),
-            const SizedBox(height: 16.0),
-            TextField(
-              controller: _descriptionController,
-              decoration: const InputDecoration(
-                labelText: 'Description',
-                border: OutlineInputBorder(),
+              TextFormField(
+                initialValue: description,
+                decoration: InputDecoration(labelText: 'Description'),
+                onSaved: (value) => description = value!,
               ),
-              maxLines: 3,
-            ),
-            const SizedBox(height: 16.0),
-            TextField(
-              controller: _locationController,
-              decoration: const InputDecoration(
-                labelText: 'Location',
-                border: OutlineInputBorder(),
+              TextFormField(
+                initialValue: image,
+                decoration: InputDecoration(labelText: 'Image URL'),
+                onSaved: (value) => image = value!,
               ),
-            ),
-            const SizedBox(height: 16.0),
-            TextField(
-              controller: _phoneController,
-              decoration: const InputDecoration(
-                labelText: 'Phone Number',
-                border: OutlineInputBorder(),
+              TextFormField(
+                initialValue: rating.toString(),
+                decoration: InputDecoration(labelText: 'Rating'),
+                keyboardType: TextInputType.number,
+                onSaved: (value) => rating = double.parse(value!),
               ),
-            ),
-            const SizedBox(height: 16.0),
-            TextField(
-              controller: _capacityController,
-              decoration: const InputDecoration(
-                labelText: 'Capacity',
-                border: OutlineInputBorder(),
+              SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: _updateHall,
+                child: Text('Update'),
               ),
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 16.0),
-            TextField(
-              controller: _priceController,
-              decoration: const InputDecoration(
-                labelText: 'Price',
-                border: OutlineInputBorder(),
-              ),
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 32.0),
-            ElevatedButton(
-              onPressed: _updateService,
-              child: const Text('Update'),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
-  }
-
-  void _updateService() {
-    final updatedHall = Hall(
-      key: widget.hall.key,
-      name: _nameController.text,
-      description: _descriptionController.text,
-      location: _locationController.text,
-      phoneNumber: _phoneController.text,
-      imageUrl: widget.hall.imageUrl, // Assuming imageUrl remains unchanged
-      capacity: _capacityController.text,
-      price: _priceController.text,
-    );
-
-    servicesRef.child(widget.hall.key).update(updatedHall.toMap()).then((_) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Details updated successfully!')),
-      );
-      Navigator.pop(context);
-    }).catchError((error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to update details: $error')),
-      );
-    });
   }
 }

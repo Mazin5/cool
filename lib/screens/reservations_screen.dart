@@ -1,133 +1,151 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 
-class ReservationsScreen extends StatelessWidget {
-  final DatabaseReference reservationsRef =
-      FirebaseDatabase.instance.ref().child('reservations');
+class ReservationsScreen extends StatefulWidget {
+  @override
+  _ReservationsScreenState createState() => _ReservationsScreenState();
+}
 
-  ReservationsScreen({super.key});
+class _ReservationsScreenState extends State<ReservationsScreen> {
+  List<Map<String, String>> reservations = [];
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchReservations();
+  }
+
+  _fetchReservations() async {
+    DatabaseReference reservationsRef = FirebaseDatabase.instance.reference().child('Hall');
+    reservationsRef.once().then((DatabaseEvent event) {
+      DataSnapshot snapshot = event.snapshot;
+      Map<dynamic, dynamic> hallMap = snapshot.value as Map<dynamic, dynamic>;
+      List<Map<String, String>> tempReservations = [];
+      
+      hallMap.forEach((key, value) {
+        if (value['reservations'] != null) {
+          Map<dynamic, dynamic> reservationMap = value['reservations'] as Map<dynamic, dynamic>;
+          reservationMap.forEach((resKey, resValue) {
+            tempReservations.add({
+              'date': resValue['date'] ?? '',
+              'email': resValue['email'] ?? ''
+            });
+          });
+        }
+      });
+
+      setState(() {
+        reservations = tempReservations;
+        isLoading = false;
+      });
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Color(0xFFF2F5FF), // Background color from Figma
       appBar: AppBar(
-        title: const Text('Reservations'),
+        title: Text('Reservations'),
+        backgroundColor: Color(0xFF5956EB), // Light/primary color
       ),
-      body: StreamBuilder(
-        stream: reservationsRef.onValue,
-        builder: (context, AsyncSnapshot<DatabaseEvent> snapshot) {
-          if (!snapshot.hasData) {
-            return Center(child: CircularProgressIndicator());
-          }
-
-          if (snapshot.data!.snapshot.value == null) {
-            return Center(child: Text('No reservations available.'));
-          }
-
-          // Handle data as List or Map
-          List<Reservation> reservations = [];
-          if (snapshot.data!.snapshot.value is List) {
-            final dataList = snapshot.data!.snapshot.value as List;
-            reservations = dataList
-                .where((element) =>
-                    element != null) // Handle potential null entries
-                .map((element) {
-              final reservationData = Map<String, dynamic>.from(element);
-              return Reservation(
-                customerName: reservationData['customerName'],
-                reservationDate: reservationData['reservationDate'],
-                status: reservationData['status'],
-              );
-            }).toList();
-          } else if (snapshot.data!.snapshot.value is Map) {
-            final reservationsMap =
-                Map<String, dynamic>.from(snapshot.data!.snapshot.value as Map);
-            reservations = reservationsMap.entries.map((entry) {
-              final reservationData =
-                  Map<String, dynamic>.from(entry.value as Map);
-              return Reservation(
-                customerName: reservationData['customerName'],
-                reservationDate: reservationData['reservationDate'],
-                status: reservationData['status'],
-              );
-            }).toList();
-          }
-
-          return ListView.builder(
-            itemCount: reservations.length,
-            itemBuilder: (context, index) {
-              var reservation = reservations[index];
-              return ReservationCard(
-                customerName: reservation.customerName,
-                reservationDate: reservation.reservationDate,
-                status: reservation.status,
-              );
-            },
-          );
-        },
-      ),
-    );
-  }
-}
-
-class Reservation {
-  final String customerName;
-  final String reservationDate;
-  final String status;
-
-  Reservation({
-    required this.customerName,
-    required this.reservationDate,
-    required this.status,
-  });
-}
-
-class ReservationCard extends StatelessWidget {
-  final String customerName;
-  final String reservationDate;
-  final String status;
-
-  const ReservationCard({
-    super.key,
-    required this.customerName,
-    required this.reservationDate,
-    required this.status,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 10.0),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              customerName,
-              style:
-                  const TextStyle(fontSize: 20.0, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8.0),
-            Text(
-              'Date: $reservationDate',
-              style: TextStyle(fontSize: 16.0, color: Colors.grey[600]),
-            ),
-            const SizedBox(height: 8.0),
-            Text(
-              'Status: $status',
-              style: TextStyle(
-                fontSize: 16.0,
-                color: status == 'Confirmed'
-                    ? Colors.green
-                    : status == 'Pending'
-                        ? Colors.orange
-                        : Colors.red,
+      body: isLoading
+          ? Center(child: CircularProgressIndicator())
+          : Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  // Title Container
+                  Container(
+                    padding: const EdgeInsets.all(16.0),
+                    margin: const EdgeInsets.symmetric(vertical: 16.0),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          spreadRadius: 3,
+                          blurRadius: 10,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Text(
+                          'Reservations',
+                          style: TextStyle(
+                            fontFamily: 'Roboto Flex',
+                            fontSize: 20,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF5956EB),
+                            letterSpacing: 1,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // List of Reservations
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: reservations.length,
+                      itemBuilder: (context, index) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(10),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  spreadRadius: 3,
+                                  blurRadius: 10,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: ListTile(
+                              leading: Icon(
+                                Icons.calendar_today,
+                                color: Color(0xFF5956EB),
+                              ),
+                              title: Text(
+                                reservations[index]['date']!,
+                                style: TextStyle(
+                                  fontFamily: 'Roboto',
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF000000).withOpacity(0.87),
+                                ),
+                              ),
+                              subtitle: Text(
+                                reservations[index]['email']!,
+                                style: TextStyle(
+                                  fontFamily: 'Roboto',
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w400,
+                                  color: Color(0xFF000000).withOpacity(0.6),
+                                ),
+                              ),
+                              trailing: Icon(
+                                Icons.chevron_right,
+                                color: Color(0xFF000000).withOpacity(0.6),
+                              ),
+                              onTap: () {
+                                // Handle tap
+                              },
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
-      ),
     );
   }
 }
