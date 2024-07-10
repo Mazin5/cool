@@ -1,17 +1,19 @@
 class Hall {
   String? id;
-  String title;
   String description;
-  String image;
-  double rating;
+  String hallName;
+  String hallNumber;
+  String location;
+  List<String> pictureUrls;
   Map<String, Reservation>? reservations;
 
   Hall({
     this.id,
-    required this.title,
     required this.description,
-    required this.image,
-    required this.rating,
+    required this.hallName,
+    required this.hallNumber,
+    required this.location,
+    required this.pictureUrls,
     this.reservations,
   });
 
@@ -19,56 +21,64 @@ class Hall {
     Map<String, Reservation> reservations = {};
     if (json['reservations'] != null) {
       json['reservations'].forEach((key, value) {
-        reservations[key] = Reservation.fromJson(Map<String, dynamic>.from(value));
+        reservations[key] =
+            Reservation.fromJson(Map<String, dynamic>.from(value));
       });
     }
     return Hall(
       id: id,
-      title: json['title'] ?? 'No Title',
       description: json['description'] ?? 'No Description',
-      image: json['image'] ?? 'https://via.placeholder.com/150',
-      rating: (json['rating'] ?? 0).toDouble(),
+      hallName: json['hallName'] ?? 'No Name',
+      hallNumber: json['hallNumber'] ?? 'No Number',
+      location: json['location'] ?? 'No Location',
+      pictureUrls: List<String>.from(json['pictureUrls'] ?? []),
       reservations: reservations,
     );
   }
 
   Map<String, dynamic> toJson() {
     final Map<String, dynamic> data = new Map<String, dynamic>();
-    data['title'] = this.title;
     data['description'] = this.description;
-    data['image'] = this.image;
-    data['rating'] = this.rating;
+    data['hallName'] = this.hallName;
+    data['hallNumber'] = this.hallNumber;
+    data['location'] = this.location;
+    data['pictureUrls'] = this.pictureUrls;
     if (this.reservations != null) {
-      data['reservations'] = this.reservations!.map((key, value) => MapEntry(key, value.toJson()));
+      data['reservations'] =
+          this.reservations!.map((key, value) => MapEntry(key, value.toJson()));
     }
     return data;
   }
 }
 
 class Reservation {
+  String customerName;
+  String customerContact;
   String date;
-  String? email;
-  String? phoneNumber;
+  String status;
 
-  Reservation({required this.date, this.email, this.phoneNumber});
+  Reservation({
+    required this.customerName,
+    required this.customerContact,
+    required this.date,
+    required this.status,
+  });
 
   factory Reservation.fromJson(Map<String, dynamic> json) {
     return Reservation(
+      customerName: json['customerName'] ?? 'No Name',
+      customerContact: json['customerContact'] ?? 'No Contact',
       date: json['date'] ?? 'No Date',
-      email: json['email'],
-      phoneNumber: json['phoneNumber'],
+      status: json['status'] ?? 'No Status',
     );
   }
 
   Map<String, dynamic> toJson() {
     final Map<String, dynamic> data = new Map<String, dynamic>();
+    data['customerName'] = this.customerName;
+    data['customerContact'] = this.customerContact;
     data['date'] = this.date;
-    if (this.email != null) {
-      data['email'] = this.email;
-    }
-    if (this.phoneNumber != null) {
-      data['phoneNumber'] = this.phoneNumber;
-    }
+    data['status'] = this.status;
     return data;
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import '../models/hall.dart';
 
@@ -10,32 +11,50 @@ class MyServiceScreen extends StatefulWidget {
 class _MyServiceScreenState extends State<MyServiceScreen> {
   Hall? hall;
   bool isLoading = true;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   @override
   void initState() {
     super.initState();
-    _fetchFirstHall();
+    _fetchVendorHalls();
   }
 
-  _fetchFirstHall() async {
-    DatabaseReference hallRef = FirebaseDatabase.instance.reference().child('Hall');
-    
-    hallRef.limitToFirst(1).once().then((DatabaseEvent event) {
-      DataSnapshot snapshot = event.snapshot;
-      if (snapshot.value != null) {
-        Map<dynamic, dynamic> hallMap = snapshot.value as Map<dynamic, dynamic>;
-        hallMap.forEach((key, value) {
-          hall = Hall.fromJson(Map<String, dynamic>.from(value), key);
-        });
+  Future<void> _fetchVendorHalls() async {
+    User? user = _auth.currentUser;
+    if (user != null) {
+      DatabaseReference vendorRef = FirebaseDatabase.instance
+          .reference()
+          .child('vendors')
+          .child(user.uid)
+          .child('halls');
+
+      vendorRef.limitToFirst(1).once().then((DatabaseEvent event) {
+        DataSnapshot snapshot = event.snapshot;
+        if (snapshot.value != null) {
+          Map<dynamic, dynamic> hallMap =
+              snapshot.value as Map<dynamic, dynamic>;
+          hallMap.forEach((key, value) {
+            hall = Hall.fromJson(Map<String, dynamic>.from(value), key);
+          });
+          setState(() {
+            isLoading = false;
+          });
+        } else {
+          setState(() {
+            isLoading = false;
+          });
+        }
+      }).catchError((error) {
+        print('Error fetching hall data: $error');
         setState(() {
           isLoading = false;
         });
-      } else {
-        setState(() {
-          isLoading = false;
-        });
-      }
-    });
+      });
+    } else {
+      setState(() {
+        isLoading = false;
+      });
+    }
   }
 
   @override
@@ -45,14 +64,16 @@ class _MyServiceScreenState extends State<MyServiceScreen> {
         title: Text('My Service'),
       ),
       body: isLoading
-          ? Center(child: CircularProgressIndicator()) 
+          ? Center(child: CircularProgressIndicator())
           : hall == null
               ? Center(child: Text('No halls available'))
               : ListTile(
-                  title: Text(hall!.title),
+                  title: Text(hall!.hallName),
                   subtitle: Text(hall!.description),
-                  leading: Image.network(hall!.image),
-                  trailing: Text(hall!.rating.toString()),
+                  leading: hall!.pictureUrls.isNotEmpty
+                      ? Image.network(hall!.pictureUrls.first)
+                      : Icon(Icons.image_not_supported),
+                  trailing: Text('Hall Number: ${hall!.hallNumber}'),
                 ),
     );
   }

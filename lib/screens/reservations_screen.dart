@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 
 class ReservationsScreen extends StatefulWidget {
@@ -9,6 +10,7 @@ class ReservationsScreen extends StatefulWidget {
 class _ReservationsScreenState extends State<ReservationsScreen> {
   List<Map<String, String>> reservations = [];
   bool isLoading = true;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   @override
   void initState() {
@@ -16,30 +18,58 @@ class _ReservationsScreenState extends State<ReservationsScreen> {
     _fetchReservations();
   }
 
-  _fetchReservations() async {
-    DatabaseReference reservationsRef = FirebaseDatabase.instance.reference().child('Hall');
-    reservationsRef.once().then((DatabaseEvent event) {
-      DataSnapshot snapshot = event.snapshot;
-      Map<dynamic, dynamic> hallMap = snapshot.value as Map<dynamic, dynamic>;
-      List<Map<String, String>> tempReservations = [];
-      
-      hallMap.forEach((key, value) {
-        if (value['reservations'] != null) {
-          Map<dynamic, dynamic> reservationMap = value['reservations'] as Map<dynamic, dynamic>;
-          reservationMap.forEach((resKey, resValue) {
-            tempReservations.add({
-              'date': resValue['date'] ?? '',
-              'email': resValue['email'] ?? ''
-            });
+  Future<void> _fetchReservations() async {
+    User? user = _auth.currentUser;
+    if (user != null) {
+      DatabaseReference vendorRef = FirebaseDatabase.instance
+          .reference()
+          .child('vendors')
+          .child(user.uid)
+          .child('halls');
+
+      vendorRef.once().then((DatabaseEvent event) {
+        DataSnapshot snapshot = event.snapshot;
+        if (snapshot.value != null) {
+          Map<dynamic, dynamic> hallMap =
+              snapshot.value as Map<dynamic, dynamic>;
+          List<Map<String, String>> tempReservations = [];
+
+          hallMap.forEach((hallKey, hallValue) {
+            if (hallValue['reservations'] != null) {
+              Map<dynamic, dynamic> reservationMap =
+                  hallValue['reservations'] as Map<dynamic, dynamic>;
+              reservationMap.forEach((resKey, resValue) {
+                tempReservations.add({
+                  'customerName': resValue['customerName'] ?? 'No Name',
+                  'customerContact':
+                      resValue['customerContact'] ?? 'No Contact',
+                  'date': resValue['date'] ?? 'No Date',
+                  'status': resValue['status'] ?? 'No Status'
+                });
+              });
+            }
+          });
+
+          setState(() {
+            reservations = tempReservations;
+            isLoading = false;
+          });
+        } else {
+          setState(() {
+            isLoading = false;
           });
         }
+      }).catchError((error) {
+        print('Error fetching reservations: $error');
+        setState(() {
+          isLoading = false;
+        });
       });
-
+    } else {
       setState(() {
-        reservations = tempReservations;
         isLoading = false;
       });
-    });
+    }
   }
 
   @override
@@ -122,7 +152,7 @@ class _ReservationsScreenState extends State<ReservationsScreen> {
                                 ),
                               ),
                               subtitle: Text(
-                                reservations[index]['email']!,
+                                reservations[index]['customerName']!,
                                 style: TextStyle(
                                   fontFamily: 'Roboto',
                                   fontSize: 14,
@@ -130,9 +160,20 @@ class _ReservationsScreenState extends State<ReservationsScreen> {
                                   color: Color(0xFF000000).withOpacity(0.6),
                                 ),
                               ),
-                              trailing: Icon(
-                                Icons.chevron_right,
-                                color: Color(0xFF000000).withOpacity(0.6),
+                              trailing: Text(
+                                reservations[index]['status']!,
+                                style: TextStyle(
+                                  fontFamily: 'Roboto',
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w400,
+                                  color: reservations[index]['status'] ==
+                                          'confirmed'
+                                      ? Colors.green
+                                      : reservations[index]['status'] ==
+                                              'canceled'
+                                          ? Colors.red
+                                          : Colors.orange,
+                                ),
                               ),
                               onTap: () {
                                 // Handle tap
