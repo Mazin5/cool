@@ -1,3 +1,5 @@
+import 'package:cool/screens/BookingsScreen.dart';
+import 'package:cool/screens/ProfileScreen.dart';
 import 'package:cool/screens/my_service_screen.dart';
 import 'package:cool/screens/reservations_screen.dart';
 import 'package:flutter/material.dart';
@@ -13,9 +15,9 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
 
   static final List<Widget> _widgetOptions = <Widget>[
-    ReservationsScreen(),
+    BookingsScreen(),
     MyServiceScreen(),
-    const Text('Profile Page'),
+    ProfileScreen(),
   ];
 
   void _onItemTapped(int index) {

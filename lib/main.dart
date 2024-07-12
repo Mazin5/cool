@@ -1,13 +1,15 @@
+import 'package:cool/screens/vendor_login_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
-import '../screens/vendor_login_screen.dart'; // Import the vendor login screen
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp();
+  // For testing purposes, you can disable App Check
+  // await FirebaseAppCheck.instance.activate(
+  //   webRecaptchaSiteKey: 'your-recaptcha-site-key',
+  // );
   runApp(MyApp());
 }
 
@@ -15,11 +17,11 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'EventPerfect Vendor',
+      title: 'Vendor App',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: VendorLoginScreen(), // Set the vendor login screen as the home screen
+      home: VendorLoginScreen(), // Set the initial screen to login
     );
   }
 }
