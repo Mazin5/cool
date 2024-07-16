@@ -5,6 +5,7 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'update_service_screen.dart';
+import 'reserve_date_screen.dart'; // Import the new screen
 
 class MyServiceScreen extends StatefulWidget {
   @override
@@ -164,7 +165,27 @@ class _MyServiceScreenState extends State<MyServiceScreen> {
                             style: ElevatedButton.styleFrom(
                               foregroundColor: Color.fromARGB(255, 0, 0, 0), // Light/primary color
                               backgroundColor: Color.fromARGB(255, 106, 106, 255), // Light/primary color
-
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: 20),
+                        Center(
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ReserveDateScreen(
+                                    serviceType: _serviceType!,
+                                    serviceId: _serviceId!,
+                                  ),
+                                ),
+                              );
+                            },
+                            child: Text('Reserve Date'),
+                            style: ElevatedButton.styleFrom(
+                              foregroundColor: Color.fromARGB(255, 0, 0, 0), // Light/primary color
+                              backgroundColor: Color.fromARGB(255, 106, 106, 255), // Light/primary color
                             ),
                           ),
                         ),
