@@ -62,7 +62,7 @@ class _UpdateServiceScreenState extends State<UpdateServiceScreen> {
         DatabaseReference serviceRef = FirebaseDatabase.instance.reference().child(widget.serviceType).child(widget.serviceId);
         await serviceRef.update(updatedData);
 
-        Navigator.pop(context);
+        Navigator.pop(context, true);
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Update failed: ${e.toString()}')));
       } finally {
@@ -191,7 +191,7 @@ class _UpdateServiceScreenState extends State<UpdateServiceScreen> {
                         }).toList(),
                       )
                     : Text('No existing images'),
-                 _servicePictures.isNotEmpty
+                _servicePictures.isNotEmpty
                     ? Wrap(
                         spacing: 10,
                         children: _servicePictures.map((file) {
@@ -218,11 +218,12 @@ class _UpdateServiceScreenState extends State<UpdateServiceScreen> {
                       )
                     : Text('No new images selected'),
                 SizedBox(height: 20.0),
-                _loading ? CircularProgressIndicator() : ElevatedButton(
-                  onPressed: _updateService,
-                  child: Text ('Update Service') ,
-                  
-                ),
+                _loading
+                    ? CircularProgressIndicator()
+                    : ElevatedButton(
+                        onPressed: _updateService,
+                        child: Text('Update Service'),
+                      ),
               ],
             ),
           ),

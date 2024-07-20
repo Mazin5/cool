@@ -1,13 +1,49 @@
-import 'dart:ffi';
-
-import 'package:cool/screens/UpdateProfileScreen.dart';
-import 'package:cool/screens/my_service_screen.dart';
 import 'package:cool/screens/vendor_login_screen.dart';
 import 'package:flutter/material.dart';
-import '../screens/UpdateProfileScreen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
+
+  @override
+  _ProfileScreenState createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final _database = FirebaseDatabase.instance.reference();
+  User? _currentVendor;
+  String _name = '';
+  String _email = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _currentVendor = _auth.currentUser;
+    if (_currentVendor != null) {
+      _loadProfileData();
+    }
+  }
+
+  Future<void> _loadProfileData() async {
+    final userDoc = await FirebaseFirestore.instance.collection('vendors').doc(_currentVendor!.uid).get();
+    if (userDoc.exists) {
+      setState(() {
+        _name = userDoc.data()?['name'] ?? '';
+        _email = _currentVendor!.email ?? '';
+      });
+    }
+  }
+
+  void _logout() async {
+    await _auth.signOut();
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => VendorLoginScreen()),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -18,9 +54,7 @@ class ProfileScreen extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () { 
-              MyServiceScreen();
-            },
+            onPressed: _logout,
           ),
         ],
       ),
@@ -34,32 +68,16 @@ class ProfileScreen extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Text(
-              'John Doe',
+              _name,
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             Text(
-              'johndoe@example.com',
+              _email,
               style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (context) => const UpdateProfileScreen()),
-                );
-              },
-              child: const Text('Edit Profile'),
             ),
             const SizedBox(height: 30),
             Divider(color: Colors.grey[400]),
             const SizedBox(height: 10),
-            ProfileMenuItem(
-              icon: Icons.settings,
-              text: 'Settings',
-              onTap: () {
-                // Implement settings functionality
-              },
-            ),
             ProfileMenuItem(
               icon: Icons.payment,
               text: 'Billing Details',
@@ -67,30 +85,14 @@ class ProfileScreen extends StatelessWidget {
                 // Implement billing details functionality
               },
             ),
-            ProfileMenuItem(
-              icon: Icons.person,
-              text: 'User Management',
-              onTap: () {
-                // Implement user management functionality
-              },
-            ),
             const SizedBox(height: 20),
             Divider(color: Colors.grey[400]),
             const SizedBox(height: 10),
             ProfileMenuItem(
-              icon: Icons.info,
-              text: 'Information',
-              onTap: () {
-                // Implement information functionality
-              },
-            ),
-            ProfileMenuItem(
               icon: Icons.logout,
               text: 'Logout',
               textColor: Colors.red,
-              onTap: () {
-                VendorLoginScreen();
-              },
+              onTap: _logout,
             ),
           ],
         ),

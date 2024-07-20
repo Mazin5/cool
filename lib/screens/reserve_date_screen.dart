@@ -14,9 +14,10 @@ class ReserveDateScreen extends StatefulWidget {
 
 class _ReserveDateScreenState extends State<ReserveDateScreen> {
   DateTime? selectedDate;
+  String? selectedDateLabel;
   DatabaseReference? _reservedRef;
   List<DateTime> reservedDates = [];
-  List<DateTime> vendorReservedDates = [];
+  List<Map<String, dynamic>> vendorReservedDates = [];
 
   @override
   void initState() {
@@ -36,12 +37,16 @@ class _ReserveDateScreenState extends State<ReserveDateScreen> {
       if (snapshot.value != null) {
         Map<dynamic, dynamic> reservedMap = Map<dynamic, dynamic>.from(snapshot.value as Map);
         List<DateTime> tempReservedDates = [];
-        List<DateTime> tempVendorReservedDates = [];
+        List<Map<String, dynamic>> tempVendorReservedDates = [];
         reservedMap.forEach((key, value) {
           DateTime reservedDate = DateFormat('yyyy-MM-dd').parse(key);
           tempReservedDates.add(reservedDate);
           if (value['vendorReserved'] == true) {
-            tempVendorReservedDates.add(reservedDate);
+            tempVendorReservedDates.add({
+              'date': reservedDate,
+              'label': value['label'] ?? '',
+              'name': value['name'] ?? 'Vendor',
+            });
           }
         });
         setState(() {
@@ -65,10 +70,46 @@ class _ReserveDateScreenState extends State<ReserveDateScreen> {
         return !reservedDates.contains(date);
       },
     );
-    if (picked != null && picked != selectedDate)
+    if (picked != null && picked != selectedDate) {
       setState(() {
         selectedDate = picked;
+        selectedDateLabel = null;
       });
+      _showLabelDialog();
+    }
+  }
+
+  Future<void> _showLabelDialog() async {
+    TextEditingController labelController = TextEditingController();
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Enter Label for Reserved Date'),
+          content: TextField(
+            controller: labelController,
+            decoration: InputDecoration(labelText: 'Label'),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Cancel'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: Text('Save'),
+              onPressed: () {
+                setState(() {
+                  selectedDateLabel = labelController.text;
+                });
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> _confirmReservation() async {
@@ -87,14 +128,15 @@ class _ReserveDateScreenState extends State<ReserveDateScreen> {
       }
 
       try {
-        await reservedDateRef.set({'reserved': true, 'vendorReserved': true});
+        await reservedDateRef.set({'reserved': true, 'vendorReserved': true, 'label': selectedDateLabel, 'name': 'Vendor'});
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Reservation confirmed for $formattedDate')),
         );
         setState(() {
-          vendorReservedDates.add(selectedDate!);
+          vendorReservedDates.add({'date': selectedDate!, 'label': selectedDateLabel ?? '', 'name': 'Vendor'});
           reservedDates.add(selectedDate!);
+          selectedDate = null;
         });
       } catch (error) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -119,7 +161,7 @@ class _ReserveDateScreenState extends State<ReserveDateScreen> {
         SnackBar(content: Text('Reservation for $formattedDate deleted')),
       );
       setState(() {
-        vendorReservedDates.remove(date);
+        vendorReservedDates.removeWhere((element) => element['date'] == date);
         reservedDates.remove(date);
       });
     } catch (error) {
@@ -165,10 +207,12 @@ class _ReserveDateScreenState extends State<ReserveDateScreen> {
               child: ListView.builder(
                 itemCount: vendorReservedDates.length,
                 itemBuilder: (context, index) {
-                  DateTime date = vendorReservedDates[index];
+                  Map<String, dynamic> reservation = vendorReservedDates[index];
+                  DateTime date = reservation['date'];
                   String formattedDate = DateFormat('yyyy-MM-dd').format(date);
                   return ListTile(
                     title: Text(formattedDate),
+                    subtitle: Text('Label: ${reservation['label']}'),
                     trailing: IconButton(
                       icon: Icon(Icons.delete),
                       onPressed: () => _deleteReservation(date),

@@ -11,7 +11,7 @@ class ReservationsScreen extends StatefulWidget {
 class _ReservationsScreenState extends State<ReservationsScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   DatabaseReference? _bookingsRef;
-  List<Map<String, String>> bookings = [];
+  List<Map<String, dynamic>> bookings = [];
   bool isLoading = true;
 
   @override
@@ -34,16 +34,26 @@ class _ReservationsScreenState extends State<ReservationsScreen> {
       final snapshot = await _bookingsRef!.once();
       final bookingsMap = snapshot.snapshot.value as Map<dynamic, dynamic>?;
       if (bookingsMap != null) {
-        List<Map<String, String>> tempBookings = [];
+        List<Map<String, dynamic>> tempBookings = [];
 
-        bookingsMap.forEach((key, value) {
-          tempBookings.add({
-            'customerName': value['customerName'] ?? '',
-            'date': value['date'] ?? '',
-            'status': value['status'] ?? '',
-          });
-          print('Booking: $value'); // Print each booking to the console
-        });
+        for (var key in bookingsMap.keys) {
+          Map<String, dynamic> bookingData = Map<String, dynamic>.from(bookingsMap[key] as Map);
+          bookingData['bookingId'] = key;
+
+          // Fetch user data from the 'users' node
+          DatabaseReference userRef = FirebaseDatabase.instance.reference().child('users').child(bookingData['userId']);
+          DatabaseEvent userEvent = await userRef.once();
+          DataSnapshot userSnapshot = userEvent.snapshot;
+
+          if (userSnapshot.value != null) {
+            Map<String, dynamic> userData = Map<String, dynamic>.from(userSnapshot.value as Map);
+            bookingData['customerName'] = userData['name']; // Assuming 'name' is the field for user's full name
+            bookingData['customerEmail'] = userData['email']; // Assuming 'email' is the field for user's email
+            bookingData['customerPhone'] = userData['phone']; // Assuming 'phone' is the field for user's phone
+          }
+
+          tempBookings.add(bookingData);
+        }
 
         setState(() {
           bookings = tempBookings;
@@ -101,7 +111,7 @@ class _ReservationsScreenState extends State<ReservationsScreen> {
                               'Reservations',
                               style: TextStyle(
                                 fontFamily: 'Roboto Flex',
-                                fontSize: 72,
+                                fontSize: 32, // Reduced font size to fit the screen better
                                 fontWeight: FontWeight.w500,
                                 color: Color(0xFF5956EB),
                                 letterSpacing: 1,
@@ -131,27 +141,60 @@ class _ReservationsScreenState extends State<ReservationsScreen> {
                                   ],
                                 ),
                                 child: ListTile(
-                                  leading: Icon(
-                                    Icons.calendar_today,
-                                    color: Color(0xFF5956EB),
-                                  ),
+                                  contentPadding: EdgeInsets.all(16.0),
                                   title: Text(
-                                    bookings[index]['date']!,
+                                    'Name: ${bookings[index]['customerName'] ?? 'N/A'}',
                                     style: TextStyle(
                                       fontFamily: 'Roboto',
                                       fontSize: 16,
-                                      fontWeight: FontWeight.w500,
+                                      fontWeight: FontWeight.bold,
                                       color: Color(0xFF000000).withOpacity(0.87),
                                     ),
                                   ),
-                                  subtitle: Text(
-                                    '${bookings[index]['customerName']} - ${bookings[index]['status']}',
-                                    style: TextStyle(
-                                      fontFamily: 'Roboto',
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w400,
-                                      color: Color(0xFF000000).withOpacity(0.6),
-                                    ),
+                                  subtitle: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      SizedBox(height: 8),
+                                      Text(
+                                        'Date: ${bookings[index]['date'] ?? 'N/A'}',
+                                        style: TextStyle(
+                                          fontFamily: 'Roboto',
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w400,
+                                          color: Color(0xFF000000).withOpacity(0.6),
+                                        ),
+                                      ),
+                                      SizedBox(height: 4),
+                                      Text(
+                                        'Email: ${bookings[index]['customerEmail'] ?? 'N/A'}',
+                                        style: TextStyle(
+                                          fontFamily: 'Roboto',
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w400,
+                                          color: Color(0xFF000000).withOpacity(0.6),
+                                        ),
+                                      ),
+                                      SizedBox(height: 4),
+                                      Text(
+                                        'Phone: ${bookings[index]['customerPhone'] ?? 'N/A'}',
+                                        style: TextStyle(
+                                          fontFamily: 'Roboto',
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w400,
+                                          color: Color(0xFF000000).withOpacity(0.6),
+                                        ),
+                                      ),
+                                      SizedBox(height: 4),
+                                      Text(
+                                        'Status: ${bookings[index]['status'] ?? 'N/A'}',
+                                        style: TextStyle(
+                                          fontFamily: 'Roboto',
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w400,
+                                          color: Color(0xFF000000).withOpacity(0.6),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                   trailing: Icon(
                                     Icons.chevron_right,

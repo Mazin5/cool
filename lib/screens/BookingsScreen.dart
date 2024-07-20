@@ -12,7 +12,7 @@ class BookingsScreen extends StatefulWidget {
 class _BookingsScreenState extends State<BookingsScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   DatabaseReference? _bookingsRef;
-  List<Map<String, String>> bookings = [];
+  List<Map<String, dynamic>> bookings = [];
   bool isLoading = true;
   String? _serviceType;
 
@@ -54,14 +54,37 @@ class _BookingsScreenState extends State<BookingsScreen> {
       final snapshot = await _bookingsRef!.once();
       final bookingsMap = snapshot.snapshot.value as Map<dynamic, dynamic>?;
       if (bookingsMap != null) {
-        List<Map<String, String>> tempBookings = [];
-        bookingsMap.forEach((key, value) {
-          tempBookings.add({
-            'customerName': value['customerName'] ?? '',
-            'date': value['date'] ?? '',
-            'status': value['status'] ?? '',
-          });
-        });
+        List<Map<String, dynamic>> tempBookings = [];
+        for (var bookingKey in bookingsMap.keys) {
+          final booking = Map<String, dynamic>.from(bookingsMap[bookingKey]);
+          final userId = booking['userId'];
+
+          if (userId != null) {
+            print('Fetching user data for userId: $userId'); // Debugging line
+            final userSnapshot = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+            if (userSnapshot.exists) {
+              final userData = userSnapshot.data() as Map<String, dynamic>;
+              print('User data: $userData'); // Debugging line
+
+              booking['customerName'] = '${userData['name']} ${userData['lastName']}';
+              booking['phoneNumber'] = userData['phoneNumber'];
+              booking['email'] = userData['email'];
+            } else {
+              print('No user data found for userId: $userId'); // Debugging line
+              booking['customerName'] = 'Unknown';
+              booking['phoneNumber'] = 'Unknown';
+              booking['email'] = 'Unknown';
+            }
+          } else {
+            print('No userId found in booking'); // Debugging line
+            booking['customerName'] = 'Unknown';
+            booking['phoneNumber'] = 'Unknown';
+            booking['email'] = 'Unknown';
+          }
+
+          tempBookings.add(booking);
+        }
+
         setState(() {
           bookings = tempBookings;
           isLoading = false;
@@ -122,6 +145,16 @@ class _BookingsScreenState extends State<BookingsScreen> {
                             Text(
                               'Name: ${bookings[index]['customerName']}',
                               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'Email: ${bookings[index]['email']}',
+                              style: TextStyle(fontSize: 16),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'Phone: ${bookings[index]['phoneNumber']}',
+                              style: TextStyle(fontSize: 16),
                             ),
                             SizedBox(height: 8),
                             Text(
