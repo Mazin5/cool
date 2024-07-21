@@ -1,132 +1,206 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
-import 'update_service_screen.dart'; // Import the update screen
-import 'add_service_screen.dart'; // Import the add service screen
-import '../models/hall.dart';
+import 'package:carousel_slider/carousel_slider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'update_service_screen.dart';
+import 'reserve_date_screen.dart';
 
-class MyServiceScreen extends StatelessWidget {
-  final DatabaseReference servicesRef =
-      FirebaseDatabase.instance.ref().child('services');
+class MyServiceScreen extends StatefulWidget {
+  @override
+  _MyServiceScreenState createState() => _MyServiceScreenState();
+}
 
-  MyServiceScreen({super.key});
+class _MyServiceScreenState extends State<MyServiceScreen> {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  DatabaseReference? _serviceRef;
+  Map<String, dynamic>? _serviceData;
+  String? _serviceType;
+  String? _serviceId;
+
+  @override
+  void initState() {
+    super.initState();
+    _auth.authStateChanges().listen((User? user) {
+      if (user != null) {
+        _serviceId = user.uid;
+        _fetchServiceType(user.uid);
+      }
+    });
+  }
+
+  Future<void> _fetchServiceType(String uid) async {
+    try {
+      DocumentSnapshot vendorDoc = await FirebaseFirestore.instance.collection('vendors').doc(uid).get();
+      if (vendorDoc.exists) {
+        setState(() {
+          _serviceType = vendorDoc['serviceType'];
+        });
+        _fetchServiceData(uid);
+      }
+    } catch (error) {
+      print('Error fetching service type: $error');
+      setState(() {
+        _serviceData = {};
+      });
+    }
+  }
+
+  Future<void> _fetchServiceData(String uid) async {
+    if (_serviceType == null) return;
+    _serviceRef = FirebaseDatabase.instance.reference().child(_serviceType!).child(uid);
+    try {
+      final snapshot = await _serviceRef!.once();
+      final serviceMap = snapshot.snapshot.value as Map<dynamic, dynamic>?;
+      if (serviceMap != null) {
+        setState(() {
+          _serviceData = Map<String, dynamic>.from(serviceMap);
+        });
+      } else {
+        setState(() {
+          _serviceData = {};
+        });
+      }
+    } catch (error) {
+      print('Error fetching service data: $error');
+      setState(() {
+        _serviceData = {};
+      });
+    }
+  }
+
+  Future<void> _navigateToUpdateService() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => UpdateServiceScreen(
+          serviceType: _serviceType!,
+          serviceId: _serviceId!,
+          serviceData: _serviceData!,
+        ),
+      ),
+    );
+
+    if (result == true) {
+      _fetchServiceData(_serviceId!); // Refresh the service data after returning
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Service'),
+        title: Text('My Service'),
+        backgroundColor: Color.fromARGB(255, 106, 106, 255), // Light/primary color
       ),
-      body: StreamBuilder(
-        stream: servicesRef.onValue,
-        builder: (context, AsyncSnapshot<DatabaseEvent> snapshot) {
-          if (!snapshot.hasData) {
-            return Center(child: CircularProgressIndicator());
-          }
-
-          if (snapshot.data!.snapshot.value == null) {
-            return Center(child: Text('No services available.'));
-          }
-
-          List<Hall> halls = [];
-          final data = snapshot.data!.snapshot.value;
-          if (data is Map) {
-            data.forEach((key, value) {
-              halls.add(Hall.fromMap(Map<String, dynamic>.from(value), key));
-            });
-          }
-
-          return ListView.builder(
-            itemCount: halls.length,
-            itemBuilder: (context, index) {
-              var hall = halls[index];
-              return HallCard(hall: hall);
-            },
-          );
-        },
-      ),
-    );
-  }
-}
-
-class HallCard extends StatelessWidget {
-  final Hall hall;
-
-  const HallCard({super.key, required this.hall});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 16.0),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (hall.imageUrl != null)
-              Container(
-                height: 200,
-                decoration: BoxDecoration(
-                  image: DecorationImage(
-                    image: NetworkImage(hall.imageUrl),
-                    fit: BoxFit.cover,
+      body: _serviceData == null
+          ? Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Card(
+                  elevation: 8,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          'Name: ${_serviceData!['name']}',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Color.fromARGB(255, 0, 0, 0), // Light/primary color
+                          ),
+                        ),
+                        SizedBox(height: 10),
+                        if (_serviceData!['pictures'] != null)
+                          CarouselSlider(
+                            options: CarouselOptions(
+                              height: 200.0,
+                              enableInfiniteScroll: true, // Enable infinite scrolling
+                              enlargeCenterPage: true,
+                            ),
+                            items: (_serviceData!['pictures'] as List<dynamic>).map((picture) {
+                              return Builder(
+                                builder: (BuildContext context) {
+                                  return Container(
+                                    width: MediaQuery.of(context).size.width,
+                                    margin: EdgeInsets.symmetric(horizontal: 5.0),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                    ),
+                                    child: Image.network(
+                                      picture,
+                                      fit: BoxFit.cover,
+                                    ),
+                                  );
+                                },
+                              );
+                            }).toList(),
+                          ),
+                        SizedBox(height: 10),
+                        Text(
+                          'Location: ${_serviceData!['location']}',
+                          style: TextStyle(fontSize: 16),
+                        ),
+                        SizedBox(height: 10),
+                        Text(
+                          'Phone: ${_serviceData!['phone']}',
+                          style: TextStyle(fontSize: 16),
+                        ),
+                        SizedBox(height: 10),
+                        Text(
+                          'Description: ${_serviceData!['description']}',
+                          style: TextStyle(fontSize: 16),
+                        ),
+                        SizedBox(height: 10),
+                        Text(
+                          'Price: ${_serviceData!['price']}',
+                          style: TextStyle(fontSize: 16),
+                        ),
+                        SizedBox(height: 20),
+                        Center(
+                          child: ElevatedButton(
+                            onPressed: _navigateToUpdateService,
+                            child: Text('Want to update ?'),
+                            style: ElevatedButton.styleFrom(
+                              foregroundColor: Color.fromARGB(255, 0, 0, 0), // Light/primary color
+                              backgroundColor: Color.fromARGB(255, 106, 106, 255), // Light/primary color
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: 20),
+                        Center(
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ReserveDateScreen(
+                                    serviceType: _serviceType!,
+                                    serviceId: _serviceId!,
+                                  ),
+                                ),
+                              );
+                            },
+                            child: Text('Reserve Date'),
+                            style: ElevatedButton.styleFrom(
+                              foregroundColor: Color.fromARGB(255, 0, 0, 0), // Light/primary color
+                              backgroundColor: Color.fromARGB(255, 106, 106, 255), // Light/primary color
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            const SizedBox(height: 16.0),
-            Text(
-              hall.name,
-              style:
-                  const TextStyle(fontSize: 24.0, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 8.0),
-            Text(
-              hall.description,
-              style: TextStyle(fontSize: 16.0, color: Colors.grey[600]),
-            ),
-            const SizedBox(height: 8.0),
-            Text(
-              'Location: ${hall.location}',
-              style: TextStyle(fontSize: 16.0, color: Colors.grey[600]),
-            ),
-            const SizedBox(height: 8.0),
-            Text(
-              'Phone: ${hall.phoneNumber}',
-              style: TextStyle(fontSize: 16.0, color: Colors.grey[600]),
-            ),
-            const SizedBox(height: 8.0),
-            Text(
-              'Capacity: ${hall.capacity}',
-              style: TextStyle(fontSize: 16.0, color: Colors.grey[600]),
-            ),
-            const SizedBox(height: 8.0),
-            Text(
-              'Price: \$${hall.price}',
-              style: TextStyle(fontSize: 16.0, color: Colors.grey[600]),
-            ),
-            const SizedBox(height: 32.0),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => UpdateServiceScreen(hall: hall)),
-                );
-              },
-              child: const Text('Want to update?'),
-            ),
-            const SizedBox(height: 16.0),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => AddServiceScreen()),
-                );
-              },
-              child: const Text('Add New Service'),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
