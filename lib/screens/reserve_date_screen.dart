@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:intl/intl.dart';
+import 'package:table_calendar/table_calendar.dart';
 
 class ReserveDateScreen extends StatefulWidget {
   final String serviceType;
@@ -18,6 +19,7 @@ class _ReserveDateScreenState extends State<ReserveDateScreen> {
   DatabaseReference? _reservedRef;
   List<DateTime> reservedDates = [];
   List<Map<String, dynamic>> vendorReservedDates = [];
+  Map<DateTime, List<String>> events = {};
 
   @override
   void initState() {
@@ -38,6 +40,7 @@ class _ReserveDateScreenState extends State<ReserveDateScreen> {
         Map<dynamic, dynamic> reservedMap = Map<dynamic, dynamic>.from(snapshot.value as Map);
         List<DateTime> tempReservedDates = [];
         List<Map<String, dynamic>> tempVendorReservedDates = [];
+        Map<DateTime, List<String>> tempEvents = {};
         reservedMap.forEach((key, value) {
           DateTime reservedDate = DateFormat('yyyy-MM-dd').parse(key);
           tempReservedDates.add(reservedDate);
@@ -48,34 +51,16 @@ class _ReserveDateScreenState extends State<ReserveDateScreen> {
               'name': value['name'] ?? 'Vendor',
             });
           }
+          tempEvents[reservedDate] = ['Reserved'];
         });
         setState(() {
           reservedDates = tempReservedDates;
           vendorReservedDates = tempVendorReservedDates;
+          events = tempEvents;
         });
       }
     } catch (error) {
       print('Error fetching reserved dates: $error');
-    }
-  }
-
-  Future<void> _selectDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: selectedDate ?? DateTime.now(),
-      firstDate: DateTime.now(),
-      lastDate: DateTime(2101),
-      selectableDayPredicate: (DateTime date) {
-        // Disable dates that are already reserved
-        return !reservedDates.contains(date);
-      },
-    );
-    if (picked != null && picked != selectedDate) {
-      setState(() {
-        selectedDate = picked;
-        selectedDateLabel = null;
-      });
-      _showLabelDialog();
     }
   }
 
@@ -171,6 +156,10 @@ class _ReserveDateScreenState extends State<ReserveDateScreen> {
     }
   }
 
+  bool _isDateReserved(DateTime date) {
+    return reservedDates.contains(date);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -182,16 +171,64 @@ class _ReserveDateScreenState extends State<ReserveDateScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              selectedDate == null
-                  ? 'No date selected!'
-                  : 'Selected Date: ${DateFormat('yyyy-MM-dd').format(selectedDate!)}',
-              style: TextStyle(fontSize: 16),
-            ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () => _selectDate(context),
-              child: Text('Select Date'),
+            TableCalendar(
+              focusedDay: DateTime.now(),
+              firstDay: DateTime(2000),
+              lastDay: DateTime(2100),
+              selectedDayPredicate: (day) {
+                return isSameDay(selectedDate, day);
+              },
+              onDaySelected: (selectedDay, focusedDay) {
+                if (selectedDay.isAfter(DateTime.now().subtract(Duration(days: 1))) && !_isDateReserved(selectedDay)) {
+                  setState(() {
+                    selectedDate = selectedDay;
+                    selectedDateLabel = null;
+                  });
+                  _showLabelDialog();
+                } else if (selectedDay.isBefore(DateTime.now())) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('You cannot select a past date.')),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('This date is already reserved. Please select another date.')),
+                  );
+                }
+              },
+              calendarBuilders: CalendarBuilders(
+                defaultBuilder: (context, date, _) {
+                  if (_isDateReserved(date) || date.isBefore(DateTime.now())) {
+                    return Container(
+                      margin: const EdgeInsets.all(4.0),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: date.isBefore(DateTime.now()) ? Colors.grey : Colors.redAccent,
+                        borderRadius: BorderRadius.circular(10.0),
+                      ),
+                      child: Text(
+                        date.day.toString(),
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    );
+                  }
+                  return null;
+                },
+                markerBuilder: (context, date, events) {
+                  if (events.isNotEmpty) {
+                    return Container(
+                      width: 7,
+                      height: 7,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.blueAccent,
+                      ),
+                    );
+                  }
+                },
+              ),
+              eventLoader: (day) {
+                return events[day] ?? [];
+              },
             ),
             SizedBox(height: 20),
             ElevatedButton(
