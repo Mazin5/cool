@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_database/firebase_database.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 
@@ -16,7 +16,6 @@ class ReserveDateScreen extends StatefulWidget {
 class _ReserveDateScreenState extends State<ReserveDateScreen> {
   DateTime? selectedDate;
   String? selectedDateLabel;
-  DatabaseReference? _reservedRef;
   List<DateTime> reservedDates = [];
   List<Map<String, dynamic>> vendorReservedDates = [];
   Map<DateTime, List<String>> events = {};
@@ -24,41 +23,39 @@ class _ReserveDateScreenState extends State<ReserveDateScreen> {
   @override
   void initState() {
     super.initState();
-    _reservedRef = FirebaseDatabase.instance
-        .reference()
-        .child(widget.serviceType)
-        .child(widget.serviceId)
-        .child('reserved');
     _fetchReservedDates();
   }
 
   Future<void> _fetchReservedDates() async {
     try {
-      DatabaseEvent event = await _reservedRef!.once();
-      DataSnapshot snapshot = event.snapshot;
-      if (snapshot.value != null) {
-        Map<dynamic, dynamic> reservedMap = Map<dynamic, dynamic>.from(snapshot.value as Map);
-        List<DateTime> tempReservedDates = [];
-        List<Map<String, dynamic>> tempVendorReservedDates = [];
-        Map<DateTime, List<String>> tempEvents = {};
-        reservedMap.forEach((key, value) {
-          DateTime reservedDate = DateFormat('yyyy-MM-dd').parse(key);
-          tempReservedDates.add(reservedDate);
-          if (value['vendorReserved'] == true) {
-            tempVendorReservedDates.add({
-              'date': reservedDate,
-              'label': value['label'] ?? '',
-              'name': value['name'] ?? 'Vendor',
-            });
-          }
-          tempEvents[reservedDate] = ['Reserved'];
-        });
-        setState(() {
-          reservedDates = tempReservedDates;
-          vendorReservedDates = tempVendorReservedDates;
-          events = tempEvents;
-        });
-      }
+      QuerySnapshot querySnapshot = await FirebaseFirestore.instance
+          .collection(widget.serviceType)
+          .doc(widget.serviceId)
+          .collection('reserved')
+          .get();
+      
+      List<DateTime> tempReservedDates = [];
+      List<Map<String, dynamic>> tempVendorReservedDates = [];
+      Map<DateTime, List<String>> tempEvents = {};
+      
+      querySnapshot.docs.forEach((doc) {
+        DateTime reservedDate = DateFormat('yyyy-MM-dd').parse(doc.id);
+        tempReservedDates.add(reservedDate);
+        if (doc['vendorReserved'] == true) {
+          tempVendorReservedDates.add({
+            'date': reservedDate,
+            'label': doc['label'] ?? '',
+            'name': doc['name'] ?? 'Vendor',
+          });
+        }
+        tempEvents[reservedDate] = ['Reserved'];
+      });
+
+      setState(() {
+        reservedDates = tempReservedDates;
+        vendorReservedDates = tempVendorReservedDates;
+        events = tempEvents;
+      });
     } catch (error) {
       print('Error fetching reserved dates: $error');
     }
@@ -102,9 +99,13 @@ class _ReserveDateScreenState extends State<ReserveDateScreen> {
       String formattedDate = DateFormat('yyyy-MM-dd').format(selectedDate!);
 
       // Check if the date is already reserved
-      DatabaseReference reservedDateRef = _reservedRef!.child(formattedDate);
-      DatabaseEvent event = await reservedDateRef.once();
-      DataSnapshot snapshot = event.snapshot;
+      DocumentSnapshot snapshot = await FirebaseFirestore.instance
+          .collection(widget.serviceType)
+          .doc(widget.serviceId)
+          .collection('reserved')
+          .doc(formattedDate)
+          .get();
+      
       if (snapshot.exists) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Sorry, this date is already reserved. Please select another date.')),
@@ -113,7 +114,12 @@ class _ReserveDateScreenState extends State<ReserveDateScreen> {
       }
 
       try {
-        await reservedDateRef.set({'reserved': true, 'vendorReserved': true, 'label': selectedDateLabel, 'name': 'Vendor'});
+        await FirebaseFirestore.instance
+            .collection(widget.serviceType)
+            .doc(widget.serviceId)
+            .collection('reserved')
+            .doc(formattedDate)
+            .set({'reserved': true, 'vendorReserved': true, 'label': selectedDateLabel, 'name': 'Vendor'});
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Reservation confirmed for $formattedDate')),
@@ -137,10 +143,14 @@ class _ReserveDateScreenState extends State<ReserveDateScreen> {
 
   Future<void> _deleteReservation(DateTime date) async {
     String formattedDate = DateFormat('yyyy-MM-dd').format(date);
-    DatabaseReference reservedDateRef = _reservedRef!.child(formattedDate);
 
     try {
-      await reservedDateRef.remove();
+      await FirebaseFirestore.instance
+          .collection(widget.serviceType)
+          .doc(widget.serviceId)
+          .collection('reserved')
+          .doc(formattedDate)
+          .delete();
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Reservation for $formattedDate deleted')),
