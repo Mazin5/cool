@@ -1,9 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_database/firebase_database.dart';
-import 'package:carousel_slider/carousel_slider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:carousel_slider/carousel_slider.dart';
 import 'update_service_screen.dart';
 import 'reserve_date_screen.dart';
 
@@ -14,7 +13,7 @@ class MyServiceScreen extends StatefulWidget {
 
 class _MyServiceScreenState extends State<MyServiceScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  DatabaseReference? _serviceRef;
+  CollectionReference? _serviceCollection;
   Map<String, dynamic>? _serviceData;
   String? _serviceType;
   String? _serviceId;
@@ -49,13 +48,12 @@ class _MyServiceScreenState extends State<MyServiceScreen> {
 
   Future<void> _fetchServiceData(String uid) async {
     if (_serviceType == null) return;
-    _serviceRef = FirebaseDatabase.instance.reference().child(_serviceType!).child(uid);
+    _serviceCollection = FirebaseFirestore.instance.collection(_serviceType!);
     try {
-      final snapshot = await _serviceRef!.once();
-      final serviceMap = snapshot.snapshot.value as Map<dynamic, dynamic>?;
-      if (serviceMap != null) {
+      DocumentSnapshot serviceDoc = await _serviceCollection!.doc(uid).get();
+      if (serviceDoc.exists) {
         setState(() {
-          _serviceData = Map<String, dynamic>.from(serviceMap);
+          _serviceData = serviceDoc.data() as Map<String, dynamic>?;
         });
       } else {
         setState(() {

@@ -6,10 +6,6 @@ import 'package:firebase_core/firebase_core.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-  // For testing purposes, you can disable App Check
-  // await FirebaseAppCheck.instance.activate(
-  //   webRecaptchaSiteKey: 'your-recaptcha-site-key',
-  // );
   runApp(MyApp());
 }
 

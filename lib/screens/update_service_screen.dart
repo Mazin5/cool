@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_database/firebase_database.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
@@ -58,9 +58,9 @@ class _UpdateServiceScreenState extends State<UpdateServiceScreen> {
           'pictures': _existingPictures + newImageUrls,
         };
 
-        // Update service details in Realtime Database
-        DatabaseReference serviceRef = FirebaseDatabase.instance.reference().child(widget.serviceType).child(widget.serviceId);
-        await serviceRef.update(updatedData);
+        // Update service details in Firestore
+        CollectionReference serviceCollection = FirebaseFirestore.instance.collection(widget.serviceType);
+        await serviceCollection.doc(widget.serviceId).update(updatedData);
 
         Navigator.pop(context, true);
       } catch (e) {

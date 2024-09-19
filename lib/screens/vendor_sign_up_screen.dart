@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
@@ -53,7 +52,7 @@ class _VendorSignUpScreenState extends State<VendorSignUpScreen> {
         // Save vendor data in Firestore
         await FirebaseFirestore.instance.collection('vendors').doc(uid).set(vendorData);
 
-        // Prepare service details for Realtime Database
+        // Prepare service details for Firestore
         Map<String, dynamic> serviceData = {
           'pictures': imageUrls, // Save URLs to the images
           'name': _name,
@@ -62,17 +61,25 @@ class _VendorSignUpScreenState extends State<VendorSignUpScreen> {
           'description': _description,
           'price': _price,
           'status': 'pending', // Set status to pending
+          'email': _email, // Add email field
         };
 
-        // Save service details in Realtime Database
-        DatabaseReference serviceRef = FirebaseDatabase.instance.reference().child(_serviceType).child(uid);
-        await serviceRef.set(serviceData);
+        // Save service details in Firestore
+        await FirebaseFirestore.instance.collection(_serviceType).doc(uid).set(serviceData);
 
         // Sign the user out after successful registration
         await FirebaseAuth.instance.signOut();
 
         // Redirect to the login page
         Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => VendorLoginScreen()));
+      } on FirebaseAuthException catch (e) {
+        if (e.code == 'email-already-in-use') {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('The email address is already in use by another account.')));
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Sign-up failed: ${e.message}')));
+        }
+      } on FirebaseException catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Firebase error: ${e.message}')));
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Sign-up failed: ${e.toString()}')));
       } finally {
