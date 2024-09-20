@@ -90,7 +90,17 @@ class _MyServiceScreenState extends State<MyServiceScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('My Service'),
-        backgroundColor: Color.fromARGB(255, 106, 106, 255), // Light/primary color
+        centerTitle: true,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.blueAccent, Colors.lightBlueAccent],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+        elevation: 4,
       ),
       body: _serviceData == null
           ? Center(child: CircularProgressIndicator())
@@ -98,81 +108,84 @@ class _MyServiceScreenState extends State<MyServiceScreen> {
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Card(
-                  elevation: 8,
+                  elevation: 10,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(15),
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.all(16.0),
+                    padding: const EdgeInsets.all(20.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
                         Text(
-                          'Name: ${_serviceData!['name']}',
+                          _serviceData!['name'] != null
+                              ? 'Name: ${_serviceData!['name']}'
+                              : 'Service Name',
                           style: TextStyle(
-                            fontSize: 20,
+                            fontSize: 22,
                             fontWeight: FontWeight.bold,
-                            color: Color.fromARGB(255, 0, 0, 0), // Light/primary color
+                            color: Colors.black87,
                           ),
                         ),
-                        SizedBox(height: 10),
+                        SizedBox(height: 15),
                         if (_serviceData!['pictures'] != null)
                           CarouselSlider(
                             options: CarouselOptions(
-                              height: 200.0,
-                              enableInfiniteScroll: true, // Enable infinite scrolling
+                              height: 250.0,
+                              autoPlay: true,
                               enlargeCenterPage: true,
+                              aspectRatio: 16 / 9,
+                              viewportFraction: 0.8,
                             ),
-                            items: (_serviceData!['pictures'] as List<dynamic>).map((picture) {
+                            items: (_serviceData!['pictures'] as List<dynamic>)
+                                .map((picture) {
                               return Builder(
                                 builder: (BuildContext context) {
                                   return Container(
-                                    width: MediaQuery.of(context).size.width,
-                                    margin: EdgeInsets.symmetric(horizontal: 5.0),
+                                    margin: EdgeInsets.symmetric(horizontal: 8.0),
                                     decoration: BoxDecoration(
-                                      color: Colors.white,
-                                    ),
-                                    child: Image.network(
-                                      picture,
-                                      fit: BoxFit.cover,
+                                      borderRadius: BorderRadius.circular(15),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.grey.withOpacity(0.5),
+                                          spreadRadius: 3,
+                                          blurRadius: 7,
+                                          offset: Offset(0, 3),
+                                        ),
+                                      ],
+                                      image: DecorationImage(
+                                        image: NetworkImage(picture),
+                                        fit: BoxFit.cover,
+                                      ),
                                     ),
                                   );
                                 },
                               );
                             }).toList(),
                           ),
-                        SizedBox(height: 10),
-                        Text(
-                          'Location: ${_serviceData!['location']}',
-                          style: TextStyle(fontSize: 16),
-                        ),
-                        SizedBox(height: 10),
-                        Text(
-                          'Phone: ${_serviceData!['phone']}',
-                          style: TextStyle(fontSize: 16),
-                        ),
-                        SizedBox(height: 10),
-                        Text(
-                          'Description: ${_serviceData!['description']}',
-                          style: TextStyle(fontSize: 16),
-                        ),
-                        SizedBox(height: 10),
-                        Text(
-                          'Price: ${_serviceData!['price']}',
-                          style: TextStyle(fontSize: 16),
-                        ),
+                        SizedBox(height: 20),
+                        _buildInfoRow(Icons.location_on, 'Location', _serviceData!['location']),
+                        _buildInfoRow(Icons.phone, 'Phone', _serviceData!['phone']),
+                        _buildInfoRow(Icons.description, 'Description', _serviceData!['description']),
+                        _buildInfoRow(Icons.attach_money, 'Price', _serviceData!['price']),
                         SizedBox(height: 20),
                         Center(
                           child: ElevatedButton(
                             onPressed: _navigateToUpdateService,
-                            child: Text('Want to update ?'),
+                            child: Text('Update Service'),
                             style: ElevatedButton.styleFrom(
-                              foregroundColor: Color.fromARGB(255, 0, 0, 0), // Light/primary color
-                              backgroundColor: Color.fromARGB(255, 106, 106, 255), // Light/primary color
+                              foregroundColor: Colors.white, backgroundColor: Colors.blueAccent, padding: EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              textStyle: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ),
-                        SizedBox(height: 20),
+                        SizedBox(height: 15),
                         Center(
                           child: ElevatedButton(
                             onPressed: () {
@@ -186,10 +199,16 @@ class _MyServiceScreenState extends State<MyServiceScreen> {
                                 ),
                               );
                             },
-                            child: Text('Reserve Date'),
+                            child: Text('Reserve Local Date'),
                             style: ElevatedButton.styleFrom(
-                              foregroundColor: Color.fromARGB(255, 0, 0, 0), // Light/primary color
-                              backgroundColor: Color.fromARGB(255, 106, 106, 255), // Light/primary color
+                              foregroundColor: Colors.white, backgroundColor: Colors.lightBlueAccent, padding: EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              textStyle: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ),
@@ -199,6 +218,26 @@ class _MyServiceScreenState extends State<MyServiceScreen> {
                 ),
               ),
             ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String label, dynamic value) {
+    return Row(
+      children: [
+        Icon(icon, color: Colors.blueAccent),
+        SizedBox(width: 10),
+        Text(
+          '$label: ',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        Flexible(
+          child: Text(
+            value != null ? value.toString() : 'N/A',
+            style: TextStyle(fontSize: 16, color: Colors.black87),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
     );
   }
 }

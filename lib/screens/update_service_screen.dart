@@ -56,11 +56,18 @@ class _UpdateServiceScreenState extends State<UpdateServiceScreen> {
           'description': _description,
           'price': _price,
           'pictures': _existingPictures + newImageUrls,
+          'status': 'pending_update', // Change the status to 'pending_update'
         };
 
-        // Update service details in Firestore
+        // Update the service details in the specific service collection (venue, singer, etc.)
         CollectionReference serviceCollection = FirebaseFirestore.instance.collection(widget.serviceType);
         await serviceCollection.doc(widget.serviceId).update(updatedData);
+
+        // Update the vendor's status in the vendors collection
+        CollectionReference vendorsCollection = FirebaseFirestore.instance.collection('vendors');
+        await vendorsCollection.doc(widget.serviceId).update({
+          'status': 'pending_update', // Change the vendor's status to 'pending_update'
+        });
 
         Navigator.pop(context, true);
       } catch (e) {
@@ -100,7 +107,9 @@ class _UpdateServiceScreenState extends State<UpdateServiceScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Update Service'),
-        backgroundColor: Color(0xFF5956EB),
+        backgroundColor: Color(0xFF4A90E2), // Updated to a brighter color for modern feel
+        centerTitle: true,
+        elevation: 4,
       ),
       body: Padding(
         padding: EdgeInsets.all(16.0),
@@ -108,127 +117,146 @@ class _UpdateServiceScreenState extends State<UpdateServiceScreen> {
           key: _formKey,
           child: SingleChildScrollView(
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                TextFormField(
-                  initialValue: _name,
-                  decoration: InputDecoration(labelText: 'Name'),
-                  validator: (value) => value!.isEmpty ? 'Please enter the name' : null,
-                  onChanged: (value) {
-                    setState(() {
-                      _name = value;
-                    });
-                  },
+                _buildTextField('Name', _name, (value) {
+                  setState(() {
+                    _name = value;
+                  });
+                }, Icons.business),
+                _buildTextField('Phone', _phone, (value) {
+                  setState(() {
+                    _phone = value;
+                  });
+                }, Icons.phone),
+                _buildTextField('Location', _location, (value) {
+                  setState(() {
+                    _location = value;
+                  });
+                }, Icons.location_on),
+                _buildTextField('Description', _description, (value) {
+                  setState(() {
+                    _description = value;
+                  });
+                }, Icons.description),
+                _buildTextField('Price', _price, (value) {
+                  setState(() {
+                    _price = value;
+                  });
+                }, Icons.attach_money),
+                SizedBox(height: 20),
+                Center(
+                  child: ElevatedButton(
+                    onPressed: _pickImages,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color(0xFF4A90E2),
+                      padding: EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                    ),
+                    child: Text('Pick Images', style: TextStyle(fontSize: 16, color: Colors.white)),
+                  ),
                 ),
-                TextFormField(
-                  initialValue: _phone,
-                  decoration: InputDecoration(labelText: 'Phone'),
-                  validator: (value) => value!.isEmpty ? 'Please enter the phone number' : null,
-                  onChanged: (value) {
-                    setState(() {
-                      _phone = value;
-                    });
-                  },
-                ),
-                TextFormField(
-                  initialValue: _location,
-                  decoration: InputDecoration(labelText: 'Location'),
-                  validator: (value) => value!.isEmpty ? 'Please enter the location' : null,
-                  onChanged: (value) {
-                    setState(() {
-                      _location = value;
-                    });
-                  },
-                ),
-                TextFormField(
-                  initialValue: _description,
-                  decoration: InputDecoration(labelText: 'Description'),
-                  validator: (value) => value!.isEmpty ? 'Please enter a description' : null,
-                  onChanged: (value) {
-                    setState(() {
-                      _description = value;
-                    });
-                  },
-                ),
-                TextFormField(
-                  initialValue: _price,
-                  decoration: InputDecoration(labelText: 'Price'),
-                  validator: (value) => value!.isEmpty ? 'Please enter a price' : null,
-                  onChanged: (value) {
-                    setState(() {
-                      _price = value;
-                    });
-                  },
-                ),
-                SizedBox(height: 20.0),
-                ElevatedButton(
-                  onPressed: _pickImages,
-                  child: Text('Pick Images'),
-                ),
-                SizedBox(height: 20.0),
-                _existingPictures.isNotEmpty
-                    ? Wrap(
-                        spacing: 10,
-                        children: _existingPictures.map((url) {
-                          return Stack(
-                            children: [
-                              Image.network(url, width: 100, height: 100, fit: BoxFit.cover),
-                              Positioned(
-                                right: 0,
-                                child: GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      _existingPictures.remove(url);
-                                    });
-                                  },
-                                  child: Icon(
-                                    Icons.remove_circle,
-                                    color: Colors.red,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          );
-                        }).toList(),
-                      )
-                    : Text('No existing images'),
-                _servicePictures.isNotEmpty
-                    ? Wrap(
-                        spacing: 10,
-                        children: _servicePictures.map((file) {
-                          return Stack(
-                            children: [
-                              Image.file(file, width: 100, height: 100, fit: BoxFit.cover),
-                              Positioned(
-                                right: 0,
-                                child: GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      _servicePictures.remove(file);
-                                    });
-                                  },
-                                  child: Icon(
-                                    Icons.remove_circle,
-                                    color: Colors.red,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          );
-                        }).toList(),
-                      )
-                    : Text('No new images selected'),
-                SizedBox(height: 20.0),
+                SizedBox(height: 20),
+                _buildImageSection('Existing Images', _existingPictures, true),
+                _buildImageSection('New Images', _servicePictures.map((file) => file.path).toList(), false),
+                SizedBox(height: 20),
                 _loading
-                    ? CircularProgressIndicator()
-                    : ElevatedButton(
-                        onPressed: _updateService,
-                        child: Text('Update Service'),
+                    ? Center(child: CircularProgressIndicator())
+                    : Center(
+                        child: ElevatedButton(
+                          onPressed: _updateService,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Color(0xFF4A90E2),
+                            padding: EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                          ),
+                          child: Text('Update Service', style: TextStyle(fontSize: 16, color: Colors.white)),
+                        ),
                       ),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildTextField(String label, String initialValue, Function(String) onChanged, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20.0),
+      child: TextFormField(
+        initialValue: initialValue,
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: Icon(icon),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.0)),
+          filled: true,
+          fillColor: Colors.white,
+        ),
+        validator: (value) => value!.isEmpty ? 'Please enter $label' : null,
+        onChanged: onChanged,
+      ),
+    );
+  }
+
+  Widget _buildImageSection(String label, List<String> imagePaths, bool isExisting) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (imagePaths.isNotEmpty)
+          Text(label, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        SizedBox(height: 10),
+        imagePaths.isNotEmpty
+            ? Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: imagePaths.map((path) {
+                  return Stack(
+                    children: [
+                      Container(
+                        width: 100,
+                        height: 100,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.grey.withOpacity(0.5),
+                              spreadRadius: 2,
+                              blurRadius: 7,
+                              offset: Offset(0, 3),
+                            ),
+                          ],
+                          image: DecorationImage(
+                            image: isExisting ? NetworkImage(path) : FileImage(File(path)) as ImageProvider,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        right: 0,
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              if (isExisting) {
+                                _existingPictures.remove(path);
+                              } else {
+                                _servicePictures.removeWhere((file) => file.path == path);
+                              }
+                            });
+                          },
+                          child: Icon(Icons.remove_circle, color: Colors.red),
+                        ),
+                      ),
+                    ],
+                  );
+                }).toList(),
+              )
+            : Text('No $label selected', style: TextStyle(fontSize: 14, color: Colors.grey)),
+      ],
     );
   }
 }
