@@ -15,12 +15,14 @@ class _BookingsScreenState extends State<BookingsScreen> {
   List<Map<String, dynamic>> bookings = [];
   bool isLoading = true;
   String? _serviceType;
+  String? _vendorId;
 
   @override
   void initState() {
     super.initState();
     _auth.authStateChanges().listen((User? user) {
       if (user != null) {
+        _vendorId = user.uid;
         _fetchServiceType(user.uid);
       } else {
         setState(() {
@@ -48,35 +50,35 @@ class _BookingsScreenState extends State<BookingsScreen> {
   }
 
   Future<void> _fetchBookings(String uid) async {
-    if (_serviceType == null) return;
-    _bookingsRef = FirebaseDatabase.instance.reference().child(_serviceType!).child(uid).child('bookings');
+    if (_serviceType == null || _vendorId == null) return;
+
     try {
-      final snapshot = await _bookingsRef!.once();
-      final bookingsMap = snapshot.snapshot.value as Map<dynamic, dynamic>?;
-      if (bookingsMap != null) {
+      QuerySnapshot bookingsSnapshot = await FirebaseFirestore.instance
+          .collection(_serviceType!)
+          .doc(_vendorId)
+          .collection('bookings')
+          .get();
+
+      if (bookingsSnapshot.docs.isNotEmpty) {
         List<Map<String, dynamic>> tempBookings = [];
-        for (var bookingKey in bookingsMap.keys) {
-          final booking = Map<String, dynamic>.from(bookingsMap[bookingKey]);
+
+        for (var bookingDoc in bookingsSnapshot.docs) {
+          Map<String, dynamic> booking = bookingDoc.data() as Map<String, dynamic>;
           final userId = booking['userId'];
 
           if (userId != null) {
-            print('Fetching user data for userId: $userId'); // Debugging line
             final userSnapshot = await FirebaseFirestore.instance.collection('users').doc(userId).get();
             if (userSnapshot.exists) {
               final userData = userSnapshot.data() as Map<String, dynamic>;
-              print('User data: $userData'); // Debugging line
-
               booking['customerName'] = '${userData['name']} ${userData['lastName']}';
               booking['phoneNumber'] = userData['phoneNumber'];
               booking['email'] = userData['email'];
             } else {
-              print('No user data found for userId: $userId'); // Debugging line
               booking['customerName'] = 'Unknown';
               booking['phoneNumber'] = 'Unknown';
               booking['email'] = 'Unknown';
             }
           } else {
-            print('No userId found in booking'); // Debugging line
             booking['customerName'] = 'Unknown';
             booking['phoneNumber'] = 'Unknown';
             booking['email'] = 'Unknown';
@@ -98,6 +100,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
     } catch (error) {
       print('Error fetching bookings: $error');
       setState(() {
+        bookings = [];
         isLoading = false;
       });
     }
@@ -107,9 +110,9 @@ class _BookingsScreenState extends State<BookingsScreen> {
     switch (status.toLowerCase()) {
       case 'confirmed':
         return Colors.green;
-      case 'canceled':
+      case 'rejected':
         return Colors.red;
-      case 'pending':
+      case 'processing_payment':
         return Colors.orange;
       default:
         return Colors.grey;
@@ -120,64 +123,104 @@ class _BookingsScreenState extends State<BookingsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Bookings'),
-        backgroundColor: Color(0xFF5956EB), // Light/primary color
+        title: Text(
+          'Bookings',
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: Colors.indigo,
       ),
       body: isLoading
           ? Center(child: CircularProgressIndicator())
           : bookings.isEmpty
-              ? Center(child: Text('No bookings found'))
+              ? Center(
+                  child: Text(
+                    'No bookings found',
+                    style: TextStyle(fontSize: 18, color: Colors.grey),
+                  ),
+                )
               : ListView.builder(
                   padding: const EdgeInsets.all(16.0),
                   itemCount: bookings.length,
                   itemBuilder: (context, index) {
                     return Card(
-                      elevation: 5,
+                      elevation: 6,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      margin: EdgeInsets.symmetric(vertical: 8.0),
+                      margin: EdgeInsets.symmetric(vertical: 10.0),
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'Name: ${bookings[index]['customerName']}',
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            Row(
+                              children: [
+                                Icon(Icons.person, color: Colors.indigo),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Name: ${bookings[index]['customerName']}',
+                                  style: TextStyle(
+                                      fontSize: 18, fontWeight: FontWeight.w600),
+                                ),
+                              ],
                             ),
                             SizedBox(height: 8),
-                            Text(
-                              'Email: ${bookings[index]['email']}',
-                              style: TextStyle(fontSize: 16),
+                            Row(
+                              children: [
+                                Icon(Icons.email, color: Colors.indigo),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Email: ${bookings[index]['email']}',
+                                  style: TextStyle(fontSize: 16),
+                                ),
+                              ],
                             ),
                             SizedBox(height: 8),
-                            Text(
-                              'Phone: ${bookings[index]['phoneNumber']}',
-                              style: TextStyle(fontSize: 16),
+                            Row(
+                              children: [
+                                Icon(Icons.phone, color: Colors.indigo),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Phone: ${bookings[index]['phoneNumber']}',
+                                  style: TextStyle(fontSize: 16),
+                                ),
+                              ],
                             ),
                             SizedBox(height: 8),
-                            Text(
-                              'Date: ${bookings[index]['date']}',
-                              style: TextStyle(fontSize: 16),
+                            Row(
+                              children: [
+                                Icon(Icons.calendar_today, color: Colors.indigo),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Date: ${bookings[index]['date']}',
+                                  style: TextStyle(fontSize: 16),
+                                ),
+                              ],
                             ),
-                            SizedBox(height: 8),
+                            SizedBox(height: 12),
                             Row(
                               children: [
                                 Text(
                                   'Status: ',
                                   style: TextStyle(
                                     fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
-                                Text(
-                                  bookings[index]['status']!,
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: getStatusColor(bookings[index]['status']!),
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: getStatusColor(
+                                        bookings[index]['status']!),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
+                                    bookings[index]['status']!,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.white,
+                                    ),
                                   ),
                                 ),
                               ],

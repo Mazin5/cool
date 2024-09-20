@@ -33,11 +33,11 @@ class _ReserveDateScreenState extends State<ReserveDateScreen> {
           .doc(widget.serviceId)
           .collection('reserved')
           .get();
-      
+
       List<DateTime> tempReservedDates = [];
       List<Map<String, dynamic>> tempVendorReservedDates = [];
       Map<DateTime, List<String>> tempEvents = {};
-      
+
       querySnapshot.docs.forEach((doc) {
         DateTime reservedDate = DateFormat('yyyy-MM-dd').parse(doc.id);
         tempReservedDates.add(reservedDate);
@@ -105,7 +105,7 @@ class _ReserveDateScreenState extends State<ReserveDateScreen> {
           .collection('reserved')
           .doc(formattedDate)
           .get();
-      
+
       if (snapshot.exists) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Sorry, this date is already reserved. Please select another date.')),
@@ -175,6 +175,17 @@ class _ReserveDateScreenState extends State<ReserveDateScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Reserve Date'),
+        centerTitle: true,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.blueAccent, Colors.lightBlueAccent],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+        elevation: 4,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -241,9 +252,16 @@ class _ReserveDateScreenState extends State<ReserveDateScreen> {
               },
             ),
             SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _confirmReservation,
-              child: Text('Confirm Reservation'),
+            Center(
+              child: ElevatedButton(
+                onPressed: _confirmReservation,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blueAccent,
+                  padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                ),
+                child: Text('Confirm Reservation', style: TextStyle(fontSize: 16, color: Colors.white)),
+              ),
             ),
             SizedBox(height: 20),
             Text(
@@ -257,12 +275,18 @@ class _ReserveDateScreenState extends State<ReserveDateScreen> {
                   Map<String, dynamic> reservation = vendorReservedDates[index];
                   DateTime date = reservation['date'];
                   String formattedDate = DateFormat('yyyy-MM-dd').format(date);
-                  return ListTile(
-                    title: Text(formattedDate),
-                    subtitle: Text('Label: ${reservation['label']}'),
-                    trailing: IconButton(
-                      icon: Icon(Icons.delete),
-                      onPressed: () => _deleteReservation(date),
+                  return Card(
+                    elevation: 4,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: ListTile(
+                      title: Text(formattedDate),
+                      subtitle: Text('Label: ${reservation['label']}'),
+                      trailing: IconButton(
+                        icon: Icon(Icons.delete, color: Colors.red),
+                        onPressed: () => _deleteReservation(date),
+                      ),
                     ),
                   );
                 },
