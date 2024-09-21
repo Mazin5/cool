@@ -1,5 +1,4 @@
 import 'package:cool/screens/BookingsScreen.dart';
-import 'package:cool/screens/ProfileScreen.dart';
 import 'package:cool/screens/my_service_screen.dart';
 import 'package:flutter/material.dart';
 
@@ -16,7 +15,6 @@ class _HomeScreenState extends State<HomeScreen> {
   static final List<Widget> _widgetOptions = <Widget>[
     BookingsScreen(),
     MyServiceScreen(),
-    ProfileScreen(),
   ];
 
   void _onItemTapped(int index) {
@@ -78,10 +76,6 @@ class _HomeScreenState extends State<HomeScreen> {
             BottomNavigationBarItem(
               icon: Icon(Icons.build),
               label: 'My Service',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person),
-              label: 'Profile',
             ),
           ],
           currentIndex: _selectedIndex,

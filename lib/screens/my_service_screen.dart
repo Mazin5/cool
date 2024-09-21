@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cool/screens/vendor_login_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -85,12 +86,27 @@ class _MyServiceScreenState extends State<MyServiceScreen> {
     }
   }
 
+  // Logout function
+ void _logout() async {
+    await _auth.signOut();
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => VendorLoginScreen()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text('My Service'),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.logout),
+            onPressed: _logout, // Logout when clicked
+          ),
+        ],
         flexibleSpace: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -169,48 +185,57 @@ class _MyServiceScreenState extends State<MyServiceScreen> {
                         _buildInfoRow(Icons.description, 'Description', _serviceData!['description']),
                         _buildInfoRow(Icons.attach_money, 'Price', _serviceData!['price']),
                         SizedBox(height: 20),
-                        Center(
-                          child: ElevatedButton(
-                            onPressed: _navigateToUpdateService,
-                            child: Text('Update Service'),
-                            style: ElevatedButton.styleFrom(
-                              foregroundColor: Colors.white, backgroundColor: Colors.blueAccent, padding: EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              textStyle: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: 15),
-                        Center(
-                          child: ElevatedButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => ReserveDateScreen(
-                                    serviceType: _serviceType!,
-                                    serviceId: _serviceId!,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: _navigateToUpdateService,
+                                child: Text('Update Service'),
+                                style: ElevatedButton.styleFrom(
+                                  foregroundColor: Colors.white,
+                                  backgroundColor: Colors.blueAccent,
+                                  padding: EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  textStyle: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                              );
-                            },
-                            child: Text('Reserve Local Date'),
-                            style: ElevatedButton.styleFrom(
-                              foregroundColor: Colors.white, backgroundColor: Colors.lightBlueAccent, padding: EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              textStyle: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
                               ),
                             ),
-                          ),
+                            SizedBox(width: 20),
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => ReserveDateScreen(
+                                        serviceType: _serviceType!,
+                                        serviceId: _serviceId!,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                child: Text('Reserve Locally'),
+                                style: ElevatedButton.styleFrom(
+                                  foregroundColor: Colors.white,
+                                  backgroundColor: Colors.lightBlueAccent,
+                                  padding: EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  textStyle: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
